@@ -4,6 +4,9 @@ const app = express();
 
 // Permitir que el servidor reciba datos en formato JSON
 app.use(express.json());
+// Permitir peticiones desde React
+const cors = require('cors');
+app.use(cors());
 
 // Base de datos simulada de usuarios registrados
 let usuarios = [];
@@ -11,7 +14,7 @@ let usuarios = [];
 // ── REGISTRO ─────────────────────────────────────────────
 // Endpoint para registrar un nuevo usuario
 // Metodo: POST
-// URL: http://localhost:3000/registro
+// URL: http://localhost:3002/registro
 app.post('/registro', (req, res) => {
     const { usuario, contrasena } = req.body;
 
@@ -40,7 +43,7 @@ app.post('/registro', (req, res) => {
 // ── LOGIN ─────────────────────────────────────────────────
 // Endpoint para iniciar sesion
 // Metodo: POST
-// URL: http://localhost:3000/login
+// URL: http://localhost:3002/login
 app.post('/login', (req, res) => {
     const { usuario, contrasena } = req.body;
 
@@ -69,8 +72,8 @@ app.post('/login', (req, res) => {
     });
 });
 
-// Iniciar el servidor en el puerto 3000
-const PUERTO = 3000;
+// Iniciar el servidor en el puerto 3002
+const PUERTO = 3002;
 app.listen(PUERTO, () => {
     console.log(`Servidor corriendo en http://localhost:${PUERTO}`);
 });
