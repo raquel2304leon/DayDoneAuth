@@ -1,78 +1,88 @@
-// Importar Express para crear el servidor
-const express = require('express');
+﻿const express = require('express');
 const app = express();
+const mysql = require('mysql2');
 
-// Permitir que el servidor reciba datos en formato JSON
 app.use(express.json());
-// Permitir peticiones desde React
 const cors = require('cors');
 app.use(cors());
 
-// Base de datos simulada de usuarios registrados
-let usuarios = [];
+const conexion = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: 'mydb'
+});
 
-// ── REGISTRO ─────────────────────────────────────────────
-// Endpoint para registrar un nuevo usuario
-// Metodo: POST
-// URL: http://localhost:3002/registro
+conexion.connect((error) => {
+    if (error) {
+        console.error('Error al conectar a MySQL:', error);
+    } else {
+        console.log('DayDoneAuth: conexion exitosa a MySQL (mydb)');
+    }
+});
+
 app.post('/registro', (req, res) => {
     const { usuario, contrasena } = req.body;
 
-    // Validar que se enviaron usuario y contrasena
     if (!usuario || !contrasena) {
         return res.status(400).json({
             mensaje: 'Error: usuario y contrasena son requeridos'
         });
     }
 
-    // Verificar si el usuario ya existe
-    const existe = usuarios.find(u => u.usuario === usuario);
-    if (existe) {
-        return res.status(400).json({
-            mensaje: 'Error: el usuario ya esta registrado'
-        });
-    }
+    const correoGenerado = `${usuario.replace(/\s+/g, '.').toLowerCase()}@daydone.local`;
 
-    // Guardar el nuevo usuario
-    usuarios.push({ usuario, contrasena });
-    res.status(201).json({
-        mensaje: 'Usuario registrado exitosamente'
+    const sqlVerificar = 'SELECT id_usuario FROM usuarios WHERE nombre = ?';
+    conexion.query(sqlVerificar, [usuario], (error, resultados) => {
+        if (error) {
+            console.error('Error al verificar usuario:', error);
+            return res.status(500).json({ mensaje: 'Error interno al verificar el usuario' });
+        }
+        if (resultados.length > 0) {
+            return res.status(400).json({
+                mensaje: 'Error: el usuario ya esta registrado'
+            });
+        }
+
+        const sqlInsertar = 'INSERT INTO usuarios (nombre, correo, contraseña) VALUES (?, ?, ?)';
+        conexion.query(sqlInsertar, [usuario, correoGenerado, contrasena], (error, resultado) => {
+            if (error) {
+                console.error('Error al registrar usuario:', error);
+                return res.status(500).json({ mensaje: 'Error al registrar el usuario' });
+            }
+            res.status(201).json({
+                mensaje: 'Usuario registrado exitosamente'
+            });
+        });
     });
 });
 
-// ── LOGIN ─────────────────────────────────────────────────
-// Endpoint para iniciar sesion
-// Metodo: POST
-// URL: http://localhost:3002/login
 app.post('/login', (req, res) => {
     const { usuario, contrasena } = req.body;
 
-    // Validar que se enviaron usuario y contrasena
     if (!usuario || !contrasena) {
         return res.status(400).json({
             mensaje: 'Error: usuario y contrasena son requeridos'
         });
     }
 
-    // Buscar el usuario en la base de datos
-    const usuarioEncontrado = usuarios.find(
-        u => u.usuario === usuario && u.contrasena === contrasena
-    );
-
-    // Si existe el usuario y la contrasena es correcta
-    if (usuarioEncontrado) {
-        return res.status(200).json({
-            mensaje: 'Autenticacion satisfactoria'
+    const sql = 'SELECT id_usuario, nombre FROM usuarios WHERE nombre = ? AND contraseña = ?';
+    conexion.query(sql, [usuario, contrasena], (error, resultados) => {
+        if (error) {
+            console.error('Error al validar login:', error);
+            return res.status(500).json({ mensaje: 'Error interno al validar el login' });
+        }
+        if (resultados.length > 0) {
+            return res.status(200).json({
+                mensaje: 'Autenticacion satisfactoria'
+            });
+        }
+        return res.status(401).json({
+            mensaje: 'Error en la autenticacion: usuario o contrasena incorrectos'
         });
-    }
-
-    // Si no existe o la contrasena es incorrecta
-    return res.status(401).json({
-        mensaje: 'Error en la autenticacion: usuario o contrasena incorrectos'
     });
 });
 
-// Iniciar el servidor en el puerto 3002
 const PUERTO = 3002;
 app.listen(PUERTO, () => {
     console.log(`Servidor corriendo en http://localhost:${PUERTO}`);
